@@ -1,0 +1,90 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+
+#To get an image that clearly depicts land and sea with two contrasting colours
+bgrvalue_land = [34, 150, 31]  
+Change_colour = [0, 255, 255]   
+
+filepath=input("Enter complete path to image:")
+image = cv2.imread(filepath)
+
+lower = np.array([4, 120, 1]) 
+upper = np.array([64, 180, 61])
+mask = cv2.inRange(image, lower, upper)
+
+image[mask == 255] = Change_colour
+cv2.imwrite("land&seacontrasted.jpg", image)
+
+image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+plt.figure(figsize=(6,6))
+plt.imshow(image_rgb)
+plt.axis("off")
+plt.title("Land & Sea Contrasted")
+plt.show()
+
+# To detect shapes and casualties
+#Priliminaries to detect shapes
+img = cv2.imread(filepath)
+rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+
+lower_blue = np.array([90, 50, 50])
+upper_blue = np.array([130, 255, 255])
+
+lower_green = np.array([4, 120, 1]) 
+upper_green = np.array([64, 180, 61])
+
+mask_blue = cv2.inRange(hsv, lower_blue, upper_blue)
+mask_green = cv2.inRange(hsv, lower_green, upper_green)
+
+final_mask = mask_blue | mask_green
+
+inverted_mask = cv2.bitwise_not(final_mask)
+finalresult = cv2.bitwise_and(rgb, rgb, mask=inverted_mask)
+
+gray = cv2.cvtColor(finalresult, cv2.COLOR_RGB2GRAY)
+_, thresh = cv2.threshold(gray, 1, 255, cv2.THRESH_BINARY)
+
+#Actual detection of shapes
+contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+output = rgb.copy()
+
+for cnt in contours:
+    epsilon = 0.02 * cv2.arcLength(cnt, True)
+    approx = cv2.approxPolyDP(cnt, epsilon, True)
+
+    vertices = len(approx)
+    if vertices == 3:
+        color = (255, 0, 0)   
+        shape_name = "Triangle"
+        casualty=2
+    elif vertices == 8:
+        color = (0, 255, 0)  
+        shape_name = "Circle"
+        casualty=0
+    elif vertices==10:
+        color = (0, 0, 255)   
+        shape_name = "Star"
+        casualty=3
+    else:
+        color = (255, 255, 0) 
+        shape_name = "Square"
+        casualty=1
+
+    cv2.drawContours(output, [approx], -1, color, 3)
+
+# display
+plt.figure(figsize=(12,6))
+
+plt.subplot(1,2,1)
+plt.title("Final Masked Image")
+plt.imshow(finalresult)
+plt.axis("off")
+
+plt.subplot(1,2,2)
+plt.title("Detected & Labeled Shapes")
+plt.imshow(output)
+plt.axis("off")
+
+plt.show()
